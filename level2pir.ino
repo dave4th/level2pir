@@ -60,6 +60,7 @@
  * assegnato l'indirizzo dal server si assegna quello
  * statico preimpostato.
  * 
+ * Eliminazione/scarto valore vuoto
  */
 
 #include "Manchester.h"
@@ -103,7 +104,7 @@ void connect() {
   Serial.println("\nconnected!");
 
   //client.subscribe("/hello");
-  // client.unsubscribe("/hello");
+  //client.unsubscribe("/hello");
 }
 
 void setup() 
@@ -129,8 +130,6 @@ void setup()
   }
   Serial.println();
 
-  Serial.print("net: ");
-  Serial.println(net);
   // mqtt
   client.begin(mqtt_server, 1883, net);
   connect();
@@ -177,9 +176,14 @@ void loop()
     // Devo estrarre e ricomporre la stringa da inviare ad mqtt
     //Serial.println(memString.substring(0,4));
     //Serial.println(memString.substring(5,6));
-    msg="{ \"ID\" : \""+memString.substring(0,4)+"\", \"Valore\" : \""+memString.substring(5,6)+"\" }";
-    Serial.println(msg);
-    client.publish(TopicBase+TopicType,msg);  // invia mqtt
+
+    // Pubblico il valore solo se c'e` un valore, non se la stringa e` vuota
+    if (memString != "") {
+      msg="{ \"ID\" : \""+memString.substring(0,4)+"\", \"Valore\" : \""+memString.substring(5,6)+"\" }";
+      Serial.println(msg);
+      client.publish(TopicBase+TopicType,msg);  // invia mqtt
+    }
+    // Azzero lettura
     memString = String("");
     // msg = String(""); // non era qua il problema
 
