@@ -61,6 +61,12 @@
  * statico preimpostato.
  * 
  * Eliminazione/scarto valore vuoto
+ * 
+ * Memorizzazione dato inviato alla level1 per non
+ * inviarlo 10 volte
+ * 
+ * Attualmente il programma gestisce fino a 10 PIR,
+ * da 0 a 9 (una sola cifra numerica).
  */
 
 #include "Manchester.h"
@@ -72,7 +78,11 @@
 
 #define BUFFER_SIZE 8
 uint8_t buffer[BUFFER_SIZE];
-String memString;  // Stringa ricevuta
+// Sinceramente non ho capito perche` devo dichiararle stringhe, ma funziona ;)
+String strReceived;  // Stringa ricevuta
+String memReceived;  // Stringa ricevuta
+
+
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network.
 // gateway and subnet are optional:
@@ -168,23 +178,37 @@ void loop()
     for(uint8_t i=1; i<receivedSize; i++) {
       //Serial.write(buffer[i]);
       //Serial.println(char(buffer[i]));
-      memString += char(buffer[i]);
+      strReceived += char(buffer[i]);
     }
 
-    Serial.println(memString);
+    Serial.println(strReceived);
+    Serial.println(memReceived);
     // Ho cambiato la stringa, ora mando: "PIR1,0"
     // Devo estrarre e ricomporre la stringa da inviare ad mqtt
-    //Serial.println(memString.substring(0,4));
-    //Serial.println(memString.substring(5,6));
+    //Serial.println(strReceived.substring(0,4));
+    //Serial.println(strReceived.substring(5,6));
 
-    // Pubblico il valore solo se c'e` un valore, non se la stringa e` vuota
-    if (memString != "") {
-      msg="{ \"ID\" : \""+memString.substring(0,4)+"\", \"Valore\" : \""+memString.substring(5,6)+"\" }";
+    /*
+     * Pubblico il valore solo se: 
+     * - la stringa e` diversa dalla precedente
+     *   (qua ci sara` l'inghippo quando saranno presenti piu` sensori,
+     *   ma non posso riservere tutta la "memoria" per gestire 10 sensori,
+     *   ad ora ho infatti previsto i PIR da 0 a 9)
+     * - c'e` una stringa/non e` vuota
+     * - controllo se c'e` PIR
+     * - controllo se c'e` 0 o 1
+     * tutto questo (anche) per eliminare errori che arrivano da una errata trasmissione
+     */ 
+    if (memReceived != strReceived && strReceived != "" && strReceived.substring(0,3) == "PIR" && (strReceived.substring(5,6) == "0" || strReceived.substring(5,6) == "1")) {
+      msg="{ \"ID\" : \""+strReceived.substring(0,4)+"\", \"Valore\" : \""+strReceived.substring(5,6)+"\" }";
       Serial.println(msg);
       client.publish(TopicBase+TopicType,msg);  // invia mqtt
+      // Copia/Memo
+      //strcpy (memReceived, strReceived); // non va perche` non sono piu` stringhe :O
+      memReceived = strReceived;
     }
     // Azzero lettura
-    memString = String("");
+    strReceived = String("");
     // msg = String(""); // non era qua il problema
 
     man.beginReceiveArray(BUFFER_SIZE, buffer);
